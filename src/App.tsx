@@ -82,6 +82,12 @@ export default function App() {
     return saved === "light" || saved === "dark" ? saved : "system";
   });
   const restoreDialog = useRef<HTMLDialogElement>(null);
+  const confirmationInput = useRef<HTMLInputElement>(null);
+  function fillRestoreConfirmation() {
+    if (!db) return;
+    setConfirmation(db.name);
+    confirmationInput.current?.focus();
+  }
   const db = databases.find((item) => item.name === selected);
   const locked =
     Boolean(operation) ||
@@ -1030,7 +1036,16 @@ export default function App() {
               <X size={20} />
             </button>
           </div>
-          <h2 id="restore-title">Restore {db?.name}?</h2>
+          <h2 id="restore-title">
+            Restore{" "}
+            <span
+              onDoubleClick={fillRestoreConfirmation}
+              title="Double-click to fill the confirmation below"
+            >
+              {db?.name}
+            </span>
+            ?
+          </h2>
           <p>
             This will overwrite the selected database and disconnect active
             users. Changes since this backup will be lost.
@@ -1114,10 +1129,18 @@ export default function App() {
             </section>
           )}
           <label htmlFor="confirmation">
-            Type <strong>{db?.name}</strong> to continue
+            Type{" "}
+            <strong
+              onDoubleClick={fillRestoreConfirmation}
+              title="Double-click to fill the confirmation below"
+            >
+              {db?.name}
+            </strong>{" "}
+            to continue
           </label>
           <input
             id="confirmation"
+            ref={confirmationInput}
             value={confirmation}
             autoComplete="off"
             spellCheck={false}
