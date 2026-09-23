@@ -9,12 +9,17 @@ const {
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
-const { SqlServer, databaseFolder, discoverInstances } = require("./sql.cjs");
+const {
+  SqlServer,
+  databaseFolder,
+  discoverInstances,
+  validateScript,
+} = require("./sql.cjs");
 let window,
   sql,
   busy = false,
   settings = { backupRoot: "", server: "localhost" };
-let selectedBackup;
+let selectedBackup, reviewedRestore;
 if (!app.isPackaged && process.env.NEBULA_PROFILE_DIR)
   app.setPath("userData", path.resolve(process.env.NEBULA_PROFILE_DIR));
 const configPath = () => path.join(app.getPath("userData"), "settings.json");
@@ -51,6 +56,18 @@ const requireSql = () => {
   if (!sql) throw new Error("Connect to SQL Server first.");
   return sql;
 };
+async function readPostRestoreScript(name) {
+  if (!settings.scriptRoot) return "";
+  try {
+    return await fs.readFile(
+      path.join(databaseFolder(settings.scriptRoot, name), "post-restore.sql"),
+      "utf8",
+    );
+  } catch (error) {
+    if (error.code === "ENOENT") return "";
+    throw error;
+  }
+}
 async function listBackups(name) {
   if (!settings.backupRoot) return [];
   const folder = databaseFolder(settings.backupRoot, name);
@@ -78,6 +95,13 @@ async function listBackups(name) {
     )
   ).sort((a, b) => b.modified.localeCompare(a.modified));
 }
+async function requireKnownBackup(name, file) {
+  const knownFile =
+    file === selectedBackup ||
+    (await listBackups(name)).some((backup) => backup.path === file);
+  if (!knownFile)
+    throw new Error("Choose the backup using the file picker or backup list.");
+}
 app.whenReady().then(async () => {
   try {
     const saved = JSON.parse(await fs.readFile(configPath(), "utf8"));
@@ -89,6 +113,11 @@ app.whenReady().then(async () => {
   } catch {
     /* First launch uses defaults. */
   }
+  if (typeof settings.scriptRoot !== "string" || !settings.scriptRoot)
+    settings.scriptRoot = path.join(
+      app.getPath("userData"),
+      "post-restoration-scripts",
+    );
   handle("settings", async () => ({
     ...settings,
     instances: await discoverInstances(),
@@ -98,9 +127,28 @@ app.whenReady().then(async () => {
       throw new Error("Invalid theme.");
     nativeTheme.themeSource = theme;
   });
+  handle("post-restore-script", readPostRestoreScript);
+  handle("save-post-restore-script", (name, script) =>
+    exclusive(async () => {
+      validateScript(script);
+      await requireSql().requireDatabase(name, true);
+      const folder = databaseFolder(settings.scriptRoot, name);
+      const file = path.join(folder, "post-restore.sql");
+      if (script.trim()) {
+        await fs.mkdir(folder, { recursive: true });
+        await fs.writeFile(file, script, "utf8");
+      } else {
+        await fs.unlink(file).catch((error) => {
+          if (error.code !== "ENOENT") throw error;
+        });
+      }
+      return script;
+    }),
+  );
   handle("connect", (server) =>
     exclusive(async () => {
       sql = undefined;
+      reviewedRestore = undefined;
       const candidates = server
         ? [server]
         : [...new Set([settings.server, ...(await discoverInstances())])];
@@ -137,10 +185,12 @@ app.whenReady().then(async () => {
   handle("choose-backup", async () => {
     const result = await dialog.showOpenDialog(window, {
       title: "Choose a SQL Server backup",
+      defaultPath: settings.backupRoot || undefined,
       properties: ["openFile"],
       filters: [{ name: "SQL Server backup", extensions: ["bak"] }],
     });
     selectedBackup = result.canceled ? undefined : result.filePaths[0];
+    reviewedRestore = undefined;
     return selectedBackup || null;
   });
   handle("backups", listBackups);
@@ -151,32 +201,73 @@ app.whenReady().then(async () => {
       return requireSql().backup(name, settings.backupRoot);
     }),
   );
+  handle("restore-plan", (name, file) =>
+    exclusive(async () => {
+      const client = requireSql();
+      await requireKnownBackup(name, file);
+      const plan = await client.restorePlan(name, file);
+      reviewedRestore = { client, name, file, plan };
+      return plan;
+    }),
+  );
   handle("restore", (name, file, confirmation) =>
     exclusive(async () => {
       const client = requireSql();
       await client.requireDatabase(name, true);
       if (confirmation !== name)
         throw new Error("Type the exact database name to confirm the restore.");
-      const knownFile =
-        file === selectedBackup ||
-        (await listBackups(name)).some((f) => f.path === file);
-      if (!knownFile)
-        throw new Error(
-          "Choose the backup using the file picker or backup list.",
-        );
+      await requireKnownBackup(name, file);
+      if (
+        reviewedRestore?.client !== client ||
+        reviewedRestore?.name !== name ||
+        reviewedRestore?.file !== file
+      )
+        throw new Error("Review the restore again before continuing.");
+      const plan = reviewedRestore.plan;
+      const script = await readPostRestoreScript(name);
+      const overwritten = plan.files
+        .filter((entry) => entry.overwrites)
+        .map((entry) => path.win32.basename(entry.destination))
+        .join(", ");
       const answer = await dialog.showMessageBox(window, {
         type: "warning",
         title: "Overwrite database?",
         message: `Restore over ${name}?`,
-        detail: `This replaces all current data in ${name} and disconnects active users. Changes since the backup will be lost.\n\nBackup: ${file}`,
+        detail: `This replaces all current data in ${name} and disconnects active users. Changes since the backup will be lost.\n\nFiles overwritten: ${overwritten}\n\nBackup: ${file}`,
         buttons: ["Cancel", "Restore database"],
         defaultId: 0,
         cancelId: 0,
         noLink: true,
       });
       if (answer.response !== 1) return { canceled: true };
-      await client.restore(name, file);
-      return { canceled: false };
+      await client.restore(name, file, plan);
+      reviewedRestore = undefined;
+      if (!script.trim()) return { canceled: false };
+      progress(
+        "Database restored. Waiting for the post restoration script decision…",
+      );
+      const run = await dialog.showMessageBox(window, {
+        type: "question",
+        title: "Post restoration script",
+        message: "Execute the post restoration script?",
+        detail: `${name} was restored successfully. Run the saved script on ${name} (${client.server}) using your Windows account?`,
+        buttons: ["Skip", "Run script"],
+        defaultId: 0,
+        cancelId: 0,
+        noLink: true,
+      });
+      if (run.response !== 1)
+        return { canceled: false, scriptStatus: "skipped" };
+      try {
+        await client.runPostRestoreScript(name, script);
+        return { canceled: false, scriptStatus: "completed" };
+      } catch (error) {
+        return {
+          canceled: false,
+          scriptStatus: "failed",
+          scriptError: error.message,
+        };
+      }
     }),
   );
   handle("reveal-folder", async (name) => {

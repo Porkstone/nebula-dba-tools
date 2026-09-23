@@ -18,6 +18,7 @@
     "test": "node --test tests/*.test.cjs",
     "test:integration": "node tests/integration.cjs",
     "test:desktop": "pnpm build && node tests/desktop.cjs",
+    "test:post-restore": "pnpm build && node tests/post-restore.cjs",
     "package": "pnpm build && electron-builder --win portable"
   },
   "build": {

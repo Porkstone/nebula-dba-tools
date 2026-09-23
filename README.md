@@ -41,6 +41,16 @@ The SQL Server **service account**, as well as the current Windows user, needs a
 
 ## Scope and limitations
 
+### Post restoration scripts
+
+On the **Restore database** tab, enter the database's SQL and click **Save script**. Nebula creates `<script folder>/<database name>/post-restore.sql`. The storage location cannot be changed in the app. Previously configured folders are preserved; new installations use `post-restoration-scripts` inside Electron's user-data folder. Each database has its own script. Clear the editor and save to remove a script. Scripts are stored as UTF-8 text and can also be edited outside the app.
+
+After a successful restore, a native prompt asks whether to execute that database's saved script. **Skip** is the default; canceled or failed restores never offer to run it. Script errors are reported separately from the successful restore. Earlier statements may already have taken effect if a later statement fails.
+
+Scripts start in the restored database using the current Windows account. T-SQL and `GO` batches are supported; SQLCMD directives are rejected. Explicit `USE` statements or qualified object names can target other databases within the account's permissions. Script files are limited to 1,000,000 characters. The script root is shared across local instances, so identical database names share the same script file.
+
+Run `pnpm test:post-restore` to test storage, prompting, execution, skip and failure behavior against a disposable database.
+
 - Local Windows SQL Server instances only; integrated authentication. No SQL logins, remote servers, scheduling, retention, encryption configuration or cloud storage.
 - Full database backups only. Restore uses backup set **1** from a single `.bak` file and recovers it immediately. Differential, log-chain, point-in-time and striped backups are not supported.
 - Restores target an **existing user database**. Source logical files are mapped to the target's current physical files; additional files use unique names in SQL Server's default data/log directories. Original source database files are not reused for another target.

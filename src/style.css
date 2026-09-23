@@ -1,5 +1,36 @@
 @import "tailwindcss";
 
+.post-restore-script {
+  border-top: 1px solid var(--border);
+  margin-top: 24px;
+  padding-top: 24px;
+}
+.post-restore-script .section-heading {
+  margin-bottom: 16px;
+}
+.post-restore-script textarea {
+  width: 100%;
+  min-height: 160px;
+  resize: vertical;
+  padding: 12px;
+  border: 1px solid var(--control);
+  border-radius: 8px;
+  background: var(--editor);
+  color: var(--text);
+  font:
+    13px/1.6 "Cascadia Mono",
+    Consolas,
+    monospace;
+}
+.post-restore-script textarea:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 3px;
+}
+.script-help {
+  font-size: 12px;
+  margin-top: 12px;
+}
+
 :root {
   font-family: "Segoe UI", sans-serif;
   color: var(--text);
@@ -928,6 +959,8 @@ td {
   padding: 28px;
   width: 520px;
   max-width: 90vw;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
   margin: auto;
 }
 .restore-dialog::backdrop {
@@ -972,6 +1005,95 @@ td {
 .restore-file code {
   font-size: 11px;
   overflow-wrap: anywhere;
+}
+.restore-targets {
+  margin: -6px 0 20px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.restore-targets-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 11px 12px;
+  background: var(--warning);
+  border-bottom: 1px solid var(--border);
+}
+.restore-targets-heading > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.restore-targets-heading svg {
+  flex-shrink: 0;
+  color: var(--orange);
+}
+.restore-targets-heading strong {
+  font-size: 12px;
+  line-height: 1.4;
+}
+.restore-targets-heading > small {
+  flex-shrink: 0;
+  padding: 2px 7px;
+  border: 1px solid color-mix(in srgb, var(--orange) 45%, transparent);
+  border-radius: 999px;
+  color: var(--orange);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.restore-targets ul {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.restore-targets li {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  padding: 11px 12px;
+  background: var(--editor);
+}
+.restore-targets li + li {
+  border-top: 1px solid var(--border);
+}
+.restore-targets li > span:last-child {
+  display: grid;
+  min-width: 0;
+}
+.restore-targets li code {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.restore-targets li small {
+  display: block;
+  min-width: 0;
+  margin-top: 3px;
+  color: var(--muted);
+  font:
+    10px/1.45 "Cascadia Mono",
+    Consolas,
+    monospace;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+.restore-targets-empty {
+  padding: 12px;
+}
+.restore-file-type {
+  margin-top: 1px;
+  color: var(--cyan);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
 }
 .restore-dialog label {
   display: block;

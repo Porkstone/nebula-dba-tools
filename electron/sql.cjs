@@ -4,6 +4,20 @@ const path = require("node:path");
 const os = require("node:os");
 const { randomUUID } = require("node:crypto");
 
+function validateScript(script) {
+  if (
+    typeof script !== "string" ||
+    script.length > 1_000_000 ||
+    script.includes("\0")
+  )
+    throw new Error("Enter a SQL script of at most 1,000,000 characters.");
+  if (/^\s*(?:[:!]|(?:EXIT|QUIT|ED|RESET)\s*$)/im.test(script))
+    throw new Error(
+      "Use T-SQL and GO batches only; SQLCMD directives are not supported.",
+    );
+  return script;
+}
+
 function clean(value, label = "Value") {
   if (typeof value !== "string" || !value || /[\x00-\x1f\x7f]/.test(value))
     throw new Error(`${label} is invalid.`);
@@ -106,7 +120,7 @@ class SqlServer {
     this.server = localServer(server);
     this.onProgress = onProgress;
   }
-  async query(sql, longRunning = false) {
+  async query(sql, longRunning = false, options = {}) {
     // ODBC sqlcmd applies -u reliably to file output, not redirected stdout.
     const outputFile = path.join(os.tmpdir(), `nebula-sql-${randomUUID()}.txt`);
     try {
@@ -125,7 +139,7 @@ class SqlServer {
           "-t",
           "0",
           "-d",
-          "master",
+          options.database || "master",
           "-y",
           "0",
           "-w",
@@ -134,8 +148,10 @@ class SqlServer {
           "-o",
           outputFile,
           "-x",
-          "-Q",
-          `SET NOCOUNT ON; ${sql}`,
+          "-X1",
+          ...(options.inputFile
+            ? ["-i", options.inputFile]
+            : ["-Q", `SET NOCOUNT ON; ${sql}`]),
         ],
         {
           timeout: longRunning ? 0 : 15000,
@@ -159,6 +175,27 @@ class SqlServer {
   async json(sql) {
     const output = await this.query(sql);
     return JSON.parse(output.trim().split(/\r?\n/).join("") || "[]");
+  }
+  async runPostRestoreScript(name, script) {
+    validateScript(script);
+    if (!script.trim())
+      throw new Error("No post restoration script is configured.");
+    const db = await this.requireDatabase(name, true);
+    if (db.state !== "ONLINE")
+      throw new Error(
+        "The restored database must be online to run the script.",
+      );
+    const inputFile = path.join(
+      os.tmpdir(),
+      `nebula-script-${randomUUID()}.sql`,
+    );
+    try {
+      await fs.writeFile(inputFile, `\uFEFF${script}`, "utf16le");
+      this.onProgress(`Running post restoration script on ${name}…`);
+      await this.query("", true, { database: name, inputFile });
+    } finally {
+      await fs.unlink(inputFile).catch(() => {});
+    }
   }
   async databases() {
     return this
@@ -206,7 +243,7 @@ class SqlServer {
       INSERT INTO #files EXEC (${literal(`RESTORE FILELISTONLY FROM DISK = ${literal(file)} WITH FILE = 1`)});
       SELECT LogicalName AS name, Type AS type, FileID AS id FROM #files ORDER BY FileID FOR JSON PATH;`);
   }
-  async restore(name, file) {
+  async restorePlan(name, file) {
     await this.requireDatabase(name, true);
     clean(file, "Backup file");
     if (
@@ -228,8 +265,10 @@ class SqlServer {
       `SELECT CAST(SERVERPROPERTY('InstanceDefaultDataPath') AS nvarchar(260)) AS data, CAST(SERVERPROPERTY('InstanceDefaultLogPath') AS nvarchar(260)) AS log FOR JSON PATH;`,
     );
     const used = new Set();
-    const moves = files
-      .map((f) => {
+    return {
+      database: name,
+      backup: file,
+      files: files.map((f) => {
         const match = current.find(
           (c) => c.type === f.type && !used.has(c.physical),
         );
@@ -243,8 +282,41 @@ class SqlServer {
             base,
             `nebula_${randomUUID()}_${f.id}.${f.type === "L" ? "ldf" : "ndf"}`,
           );
-        return `MOVE ${literal(f.name)} TO ${literal(destination)}`;
-      })
+        return {
+          logicalName: f.name,
+          type: f.type === "L" ? "log" : "data",
+          destination,
+          overwrites: Boolean(match),
+        };
+      }),
+    };
+  }
+  async restore(name, file, reviewedPlan) {
+    const plan = reviewedPlan || (await this.restorePlan(name, file));
+    if (
+      plan?.database !== name ||
+      plan?.backup !== file ||
+      !Array.isArray(plan.files) ||
+      !plan.files.length ||
+      plan.files.some(
+        (entry) =>
+          typeof entry.logicalName !== "string" ||
+          !["data", "log"].includes(entry.type) ||
+          typeof entry.destination !== "string" ||
+          !path.win32.isAbsolute(entry.destination),
+      )
+    )
+      throw new Error("Review the restore again before continuing.");
+    if (reviewedPlan) {
+      await this.requireDatabase(name, true);
+      clean(file, "Backup file");
+      await fs.access(file);
+    }
+    const moves = plan.files
+      .map(
+        (entry) =>
+          `MOVE ${literal(entry.logicalName)} TO ${literal(entry.destination)}`,
+      )
       .join(", ");
     this.onProgress("Verifying the backup before restore…");
     await this.query(
@@ -293,6 +365,7 @@ async function discoverInstances() {
   }
 }
 module.exports = {
+  validateScript,
   SqlServer,
   databaseFolder,
   identifier,

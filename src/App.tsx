@@ -24,7 +24,7 @@ import {
   Sun,
   X,
 } from "lucide-react";
-import type { Backup, Database, Result, Theme } from "./types";
+import type { Backup, Database, RestorePlan, Result, Theme } from "./types";
 
 const api = window.nebula;
 async function unwrap<T>(request: Promise<Result<T>>): Promise<T> {
@@ -43,6 +43,7 @@ const date = (value: string) =>
   });
 const message = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
+const fileName = (value: string) => value.split(/[\\/]/).pop() || value;
 
 export default function App() {
   const [databases, setDatabases] = useState<Database[]>([]);
@@ -61,6 +62,13 @@ export default function App() {
   const [loadingFiles, setLoadingFiles] = useState(false);
   const [fileError, setFileError] = useState("");
   const [file, setFile] = useState("");
+  const [restorePlan, setRestorePlan] = useState<RestorePlan | null>(null);
+  const [reviewingRestore, setReviewingRestore] = useState(false);
+  const [script, setScript] = useState("");
+  const [loadingScript, setLoadingScript] = useState(false);
+  const [scriptLoadError, setScriptLoadError] = useState("");
+  const [savedScript, setSavedScript] = useState("");
+  const [savingScript, setSavingScript] = useState(false);
   const [confirmation, setConfirmation] = useState("");
   const [operation, setOperation] = useState("");
   const [progress, setProgress] = useState("");
@@ -75,7 +83,12 @@ export default function App() {
   });
   const restoreDialog = useRef<HTMLDialogElement>(null);
   const db = databases.find((item) => item.name === selected);
-  const locked = Boolean(operation) || connecting;
+  const locked =
+    Boolean(operation) ||
+    connecting ||
+    savingScript ||
+    loadingScript ||
+    reviewingRestore;
 
   useEffect(() => {
     const media = matchMedia("(prefers-color-scheme: dark)");
@@ -150,6 +163,31 @@ export default function App() {
     };
   }, [selected, root, revision]);
 
+  useEffect(() => {
+    if (!api || !selected) return;
+    let canceled = false;
+    setLoadingScript(true);
+    setScriptLoadError("");
+    setScript("");
+    setSavedScript("");
+    unwrap(api.postRestoreScript(selected))
+      .then((value) => {
+        if (!canceled) {
+          setScript(value);
+          setSavedScript(value);
+        }
+      })
+      .catch((error) => {
+        if (!canceled) setScriptLoadError(message(error));
+      })
+      .finally(() => {
+        if (!canceled) setLoadingScript(false);
+      });
+    return () => {
+      canceled = true;
+    };
+  }, [selected]);
+
   async function connect(target = instance) {
     if (!api) return;
     setConnecting(true);
@@ -159,6 +197,7 @@ export default function App() {
     setSelected("");
     setBackups([]);
     setFile("");
+    setRestorePlan(null);
     try {
       const result = await unwrap(api.connect(target));
       setServer(result.server);
@@ -190,7 +229,10 @@ export default function App() {
     if (!api) return;
     try {
       const result = await unwrap(api.chooseBackup());
-      if (result) setFile(result);
+      if (result) {
+        setFile(result);
+        setRestorePlan(null);
+      }
     } catch (error) {
       setNotice({ type: "error", text: message(error) });
     }
@@ -214,7 +256,7 @@ export default function App() {
     }
   }
   async function runRestore() {
-    if (!api || !db) return;
+    if (!api || !db || !restorePlan) return;
     restoreDialog.current?.close();
     setOperation("Restoring");
     setProgress("Waiting for restore confirmation…");
@@ -223,8 +265,15 @@ export default function App() {
       const result = await unwrap(api.restore(db.name, file, confirmation));
       if (!result.canceled) {
         setNotice({
-          type: "success",
-          text: `${db.name} was restored and is ready to use.`,
+          type: result.scriptStatus === "failed" ? "error" : "success",
+          text:
+            result.scriptStatus === "failed"
+              ? `${db.name} was restored successfully, but the post restoration script failed. Earlier script statements may already have taken effect.\n${result.scriptError}`
+              : result.scriptStatus === "completed"
+                ? `${db.name} was restored and the post restoration script completed.`
+                : result.scriptStatus === "skipped"
+                  ? `${db.name} was restored. The post restoration script was skipped.`
+                  : `${db.name} was restored and is ready to use.`,
         });
         const connection = await unwrap(api.connect(server));
         setDatabases(connection.databases);
@@ -234,6 +283,39 @@ export default function App() {
     } finally {
       setOperation("");
       setConfirmation("");
+    }
+  }
+  async function reviewRestore() {
+    if (!api || !db || !file) return;
+    setReviewingRestore(true);
+    setNotice(null);
+    setRestorePlan(null);
+    try {
+      const plan = await unwrap(api.restorePlan(db.name, file));
+      setRestorePlan(plan);
+      setConfirmation("");
+      restoreDialog.current?.showModal();
+    } catch (error) {
+      setNotice({ type: "error", text: message(error) });
+    } finally {
+      setReviewingRestore(false);
+    }
+  }
+  async function saveScript() {
+    if (!api || !db) return;
+    setSavingScript(true);
+    try {
+      setSavedScript(await unwrap(api.savePostRestoreScript(db.name, script)));
+      setNotice({
+        type: "success",
+        text: script.trim()
+          ? "Post restoration script saved."
+          : "Post restoration script removed.",
+      });
+    } catch (error) {
+      setNotice({ type: "error", text: message(error) });
+    } finally {
+      setSavingScript(false);
     }
   }
   const visible = databases.filter((item) =>
@@ -248,6 +330,7 @@ export default function App() {
       onClick={() => {
         setSelected(item.name);
         setFile("");
+        setRestorePlan(null);
         setNotice(null);
       }}
       aria-current={selected === item.name ? "page" : undefined}
@@ -657,6 +740,71 @@ export default function App() {
                             <FolderOpen size={15} />
                           </button>
                         </div>
+                        <section
+                          className="post-restore-script"
+                          aria-labelledby="post-script-heading"
+                        >
+                          <div className="section-heading">
+                            <div>
+                              <h2 id="post-script-heading">
+                                Post restoration script
+                              </h2>
+                              <p>
+                                Optional SQL for {db.name}. After a successful
+                                restore, you’ll be asked whether to run this
+                                database’s saved script.
+                              </p>
+                            </div>
+                          </div>
+                          {scriptLoadError && (
+                            <p role="alert">
+                              Could not load script: {scriptLoadError}
+                            </p>
+                          )}
+                          <label className="field-label" htmlFor="post-script">
+                            SQL script
+                          </label>
+                          <textarea
+                            id="post-script"
+                            value={script}
+                            onChange={(event) => setScript(event.target.value)}
+                            disabled={locked || Boolean(scriptLoadError)}
+                            spellCheck={false}
+                            maxLength={1000000}
+                            placeholder="-- Enter your post restoration SQL here"
+                          />
+                          <div className="action-footer">
+                            <p role="status">
+                              {script !== savedScript
+                                ? "Unsaved changes. Save or discard them before restoring."
+                                : savedScript.trim()
+                                  ? "Script saved. You can skip it after any restore."
+                                  : "No script configured. No prompt will be shown."}
+                            </p>
+                            <div className="flex gap-2">
+                              <button
+                                className="button"
+                                disabled={locked || script === savedScript}
+                                onClick={() => setScript(savedScript)}
+                              >
+                                Discard changes
+                              </button>
+                              <button
+                                className="button"
+                                disabled={locked || script === savedScript}
+                                onClick={saveScript}
+                              >
+                                {savingScript ? "Saving…" : "Save script"}
+                              </button>
+                            </div>
+                          </div>
+                          <p className="script-help">
+                            T-SQL and GO batches are supported. Runs with your
+                            Windows permissions; explicit USE statements can
+                            change the database context. Clear and save to
+                            remove the script.
+                          </p>
+                        </section>
                         <div className="restore-warning">
                           <CircleAlert size={19} />
                           <div>
@@ -677,14 +825,11 @@ export default function App() {
                           </p>
                           <button
                             className="button primary"
-                            disabled={locked || !file}
-                            onClick={() => {
-                              setConfirmation("");
-                              restoreDialog.current?.showModal();
-                            }}
+                            disabled={locked || !file || script !== savedScript}
+                            onClick={reviewRestore}
                           >
                             <ArrowUpFromLine size={17} />
-                            Review restore
+                            {reviewingRestore ? "Reviewing…" : "Review restore"}
                           </button>
                         </div>
                       </>
@@ -799,6 +944,7 @@ export default function App() {
                                 disabled={locked || db.system}
                                 onClick={() => {
                                   setFile(backup.path);
+                                  setRestorePlan(null);
                                   setTab("restore");
                                   document
                                     .getElementById("restore-tab")
@@ -893,6 +1039,80 @@ export default function App() {
             <FileArchive size={18} />
             <code>{file}</code>
           </div>
+          <section
+            className="restore-targets"
+            aria-labelledby="restore-targets-title"
+          >
+            <div className="restore-targets-heading">
+              <span>
+                <HardDrive size={17} />
+                <strong id="restore-targets-title">
+                  Database files that will be overwritten
+                </strong>
+              </span>
+              <small>
+                {restorePlan?.files.filter((entry) => entry.overwrites)
+                  .length || 0}{" "}
+                {(restorePlan?.files.filter((entry) => entry.overwrites)
+                  .length || 0) === 1
+                  ? "file"
+                  : "files"}
+              </small>
+            </div>
+            <ul>
+              {restorePlan?.files
+                .filter((entry) => entry.overwrites)
+                .map((entry) => (
+                  <li key={`${entry.logicalName}-${entry.destination}`}>
+                    <span className="restore-file-type">
+                      {fileName(entry.destination)
+                        .match(/\.(mdf|ndf|ldf)$/i)?.[1]
+                        .toUpperCase() ||
+                        (entry.type === "log" ? "LOG" : "DATA")}
+                    </span>
+                    <span>
+                      <code>{fileName(entry.destination)}</code>
+                      <small title={entry.destination}>
+                        {entry.destination}
+                      </small>
+                    </span>
+                  </li>
+                ))}
+            </ul>
+            {!restorePlan?.files.some((entry) => entry.overwrites) && (
+              <p className="restore-targets-empty">
+                No existing database files will be overwritten.
+              </p>
+            )}
+          </section>
+          {restorePlan?.files.some((entry) => !entry.overwrites) && (
+            <section
+              className="restore-targets"
+              aria-label="Database files that will be created"
+            >
+              <div className="restore-targets-heading">
+                <strong>Database files that will be created</strong>
+              </div>
+              <ul>
+                {restorePlan.files
+                  .filter((entry) => !entry.overwrites)
+                  .map((entry) => (
+                    <li key={entry.destination}>
+                      <span className="restore-file-type">
+                        {fileName(entry.destination)
+                          .match(/\.(mdf|ndf|ldf)$/i)?.[1]
+                          .toUpperCase() ||
+                          (entry.type === "log" ? "LOG" : "DATA")}
+                      </span>
+                      <span>
+                        <code>{fileName(entry.destination)}</code>
+                        <small>{entry.destination}</small>
+                      </span>
+                    </li>
+                  ))}
+              </ul>
+            </section>
+          )}
           <label htmlFor="confirmation">
             Type <strong>{db?.name}</strong> to continue
           </label>
@@ -913,7 +1133,9 @@ export default function App() {
             </button>
             <button
               className="button primary"
-              disabled={!db || confirmation !== db.name || locked}
+              disabled={
+                !db || !restorePlan || confirmation !== db.name || locked
+              }
             >
               Restore database
             </button>
