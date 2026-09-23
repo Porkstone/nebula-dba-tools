@@ -1,0 +1,4 @@
+allowBuilds:
+  electron-winstaller: false
+  electron: true
+ignoreScripts: false

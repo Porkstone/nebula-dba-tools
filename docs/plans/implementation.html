@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" /><meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  /><title>Nebula · Implementation plan</title
+  ><style>
+    body {
+      margin: 0;
+      background: #f4f3ee;
+      color: #202d35;
+      font:
+        17px/1.7 "Segoe UI",
+        sans-serif;
+    }
+    main {
+      max-width: 900px;
+      margin: 64px auto;
+      padding: 48px;
+      background: white;
+      border-top: 6px solid #207d73;
+    }
+    h1 {
+      font-size: 42px;
+      line-height: 1.2;
+    }
+    h2 {
+      margin-top: 36px;
+    }
+    small {
+      color: #207d73;
+      letter-spacing: 3px;
+    }
+    li {
+      margin: 12px 0;
+    }
+    code {
+      background: #edf2f1;
+      padding: 3px 6px;
+    }
+    .note {
+      padding: 20px;
+      background: #edf2f1;
+    }
+  </style>
+  <main>
+    <small>NEBULA / LOCAL DATABASE OPERATIONS</small>
+    <h1>Backup & restore, close to home.</h1>
+    <p>
+      A Windows Electron application for administering the local SQL Server with
+      a searchable database sidebar and a focused backup and restore workspace.
+    </p>
+    <h2>01 · Desktop foundation</h2>
+    <p>
+      React, TypeScript, Tailwind and Lucide in a sandboxed Electron renderer. A
+      narrow preload bridge delegates SQLCMD and filesystem operations to the
+      main process. No cloud backend or separate application sign-in: SQL Server
+      uses the current Windows identity.
+    </p>
+    <h2>02 · Connection & discovery</h2>
+    <p>
+      Visual direction follows the supplied Nebula brand guide, edition 1.1:
+      Segoe UI, deep teal surfaces, cyan selection and focus, orange primary
+      actions, and complete Light, Dark and System modes with a saved
+      preference.
+    </p>
+    <p>
+      Attempt localhost on launch; discover local named instances as fallbacks.
+      Allow choosing a local instance and reconnecting. Surface connection
+      failures with actionable messages and never show fabricated databases.
+    </p>
+    <h2>03 · Backups</h2>
+    <p>
+      Choose and persist a backup root using the native folder picker. Create a
+      database-named subdirectory, then a unique timestamped .bak file. Full
+      copy-only backups use checksums and verification. Display local backup
+      files with size and date.
+    </p>
+    <h2>04 · Restore</h2>
+    <p>
+      Select a local .bak file, verify it, and restore to the selected user
+      database. Require an explicit overwrite confirmation naming the target
+      database. Disconnect active sessions only after confirmation, and recover
+      multi-user mode on failure where possible. Exclude system databases from
+      destructive restore operations.
+    </p>
+    <h2>05 · Verification & delivery</h2>
+    <p>
+      Run type checks, lint, automated safety tests, and a production build.
+      Exercise SQL discovery against the installed instance. Validate
+      backup/restore using an isolated disposable test database if feasible.
+      Package a Windows executable and document setup and limitations.
+    </p>
+    <div class="note">
+      SQL Server's service account must be able to read and write the chosen
+      backup directory. The application will explain permission errors without
+      modifying system ACLs automatically.
+    </div>
+    <h2>Questions</h2>
+    <p>
+      No blocking questions. Initial scope is local Windows authentication and
+      full database backups/restores. SQL logins, scheduling, point-in-time
+      recovery and restoring under a new name can be added later.
+    </p>
+  </main>
+</html>
