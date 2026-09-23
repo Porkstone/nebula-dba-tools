@@ -1,5 +1,7 @@
 # Nebula DBA
 
+Licensed under the [MIT License](LICENSE).
+
 A Windows Electron app for backing up and restoring local SQL Server databases. Built with React, TypeScript, Tailwind, Lucide and Microsoft SQLCMD. The interface follows the supplied Nebula application brand guidelines (edition 1.1), including Light, Dark and System appearance.
 
 ## Run

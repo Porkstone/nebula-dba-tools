@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "description": "Local SQL Server backup and restore workspace",
   "author": "Nebula",
+  "license": "MIT",
   "main": "electron/main.cjs",
   "type": "module",
   "scripts": {
@@ -28,6 +29,7 @@
     "files": [
       "dist/**/*",
       "electron/**/*",
+      "LICENSE",
       "package.json"
     ],
     "win": {
