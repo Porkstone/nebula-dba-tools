@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Nebula DBA — Chocolatey submission</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: system-ui, sans-serif;
+        line-height: 1.6;
+        background: #101a29;
+        color: #e9eff7;
+      }
+      body {
+        max-width: 860px;
+        margin: 64px auto;
+        padding: 0 28px 48px;
+      }
+      h1 {
+        font-size: clamp(2rem, 5vw, 3rem);
+        line-height: 1.15;
+      }
+      h2 {
+        margin-top: 32px;
+        color: #91d9cb;
+      }
+      li {
+        margin: 12px 0;
+      }
+      code {
+        color: #b4d6ff;
+      }
+      .intro {
+        color: #b9c8d9;
+        font-size: 1.15rem;
+      }
+      article {
+        border: 1px solid #35465c;
+        border-radius: 16px;
+        padding: 24px 32px;
+        margin-top: 28px;
+        background: #172438;
+      }
+      a {
+        color: #a6cfff;
+      }
+    </style>
+  </head>
+  <body>
+    <p>Distribution / 27 October 2026</p>
+    <h1>Submit Nebula DBA to Chocolatey</h1>
+    <p class="intro">
+      Publish the existing 0.1.0 Windows portable application as
+      <code>nebula-dba-tools</code>, with reproducible package sources and
+      checksum-verified downloads.
+    </p>
+    <article>
+      <h2>Release and package</h2>
+      <ol>
+        <li>Run lint, unit tests and the production Windows package build.</li>
+        <li>
+          Publish the executable and SHA-256 checksum to GitHub release
+          <code>v0.1.0</code>, tied to the existing application commit.
+        </li>
+        <li>
+          Create Chocolatey metadata and scripts that download the x64
+          executable, verify its SHA-256 hash, provide a GUI shim and Start menu
+          shortcut, and remove the shortcut on uninstall.
+        </li>
+        <li>
+          Declare Microsoft ODBC SQLCMD (<code>sqlserver-cmdlineutils</code>) as
+          a dependency. SQL Server remains a user-managed prerequisite.
+        </li>
+      </ol>
+      <h2>Verification and submission</h2>
+      <ol>
+        <li>
+          Build the nupkg, inspect its contents, and test install and uninstall
+          without changing databases.
+        </li>
+        <li>
+          Publish package sources to the existing repository, then submit the
+          nupkg to Chocolatey's community push endpoint using the privately
+          supplied key.
+        </li>
+        <li>
+          Report the submission response and package page. Chocolatey's
+          automated checks and moderator approval happen after submission.
+        </li>
+      </ol>
+      <h2>Credential handling</h2>
+      <p>
+        Read the publishing credential from the private secret file at
+        submission time. Keep it out of source files, release assets and command
+        output.
+      </p>
+    </article>
+  </body>
+</html>

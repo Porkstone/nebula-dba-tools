@@ -4,6 +4,18 @@ Licensed under the [MIT License](LICENSE).
 
 A Windows Electron app for backing up and restoring local SQL Server databases. Built with React, TypeScript, Tailwind, Lucide and Microsoft SQLCMD. The interface follows the supplied Nebula application brand guidelines (edition 1.1), including Light, Dark and System appearance.
 
+## Windows download
+
+Download the unsigned x64 portable executable from [GitHub Releases](https://github.com/Porkstone/nebula-dba-tools/releases). Windows 10 or newer is required. Install Microsoft ODBC SQLCMD separately when using the portable download; Node.js and pnpm are not required to run it.
+
+The Chocolatey package ID is `nebula-dba-tools`. After the package is approved in the community repository, install it from an elevated PowerShell session:
+
+```powershell
+choco install nebula-dba-tools --yes
+```
+
+The package installs ODBC SQLCMD as a dependency and adds a Start menu shortcut and the `nebula-dba-tools` command. You still need an existing local SQL Server instance and the permissions described below. Uninstalling retains settings, saved SQL scripts and database backups. See the [Chocolatey package sources and maintenance instructions](packaging/chocolatey/README.md).
+
 ## Run
 
 Requires Windows, Node.js 22.12+ (Node 24 recommended), pnpm, SQL Server 2016 or newer, and **Microsoft ODBC SQLCMD** on PATH. Your Windows account needs the relevant SQL Server backup/restore permissions. The app does not use a separate login or cloud service.

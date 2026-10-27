@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>nebula-dba-tools</id>
+    <version>0.1.0</version>
+    <title>Nebula DBA (Portable)</title>
+    <authors>Nebula, Charlie</authors>
+    <owners>Porkstone</owners>
+    <projectUrl>https://github.com/Porkstone/nebula-dba-tools</projectUrl>
+    <packageSourceUrl>https://github.com/Porkstone/nebula-dba-tools/tree/master/packaging/chocolatey</packageSourceUrl>
+    <projectSourceUrl>https://github.com/Porkstone/nebula-dba-tools</projectSourceUrl>
+    <docsUrl>https://github.com/Porkstone/nebula-dba-tools#readme</docsUrl>
+    <bugTrackerUrl>https://github.com/Porkstone/nebula-dba-tools/issues</bugTrackerUrl>
+    <licenseUrl>https://github.com/Porkstone/nebula-dba-tools/blob/v0.1.0/LICENSE</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <copyright>Copyright (c) 2026 Charlie</copyright>
+    <summary>Local SQL Server backup and restore workspace for Windows.</summary>
+    <description><![CDATA[
+Nebula DBA is an open-source Windows desktop app for backing up and restoring local Microsoft SQL Server databases using your current Windows account.
+
+Features:
+
+- Discover local SQL Server instances and browse databases.
+- Create full, copy-only backups with checksums and RESTORE VERIFYONLY verification.
+- Restore backups to an existing user database after explicit confirmation.
+- Save optional per-database post-restoration SQL scripts.
+- Light, Dark and System appearance, with no cloud service or telemetry.
+
+Requirements:
+
+- 64-bit Windows 10 or newer.
+- An existing local SQL Server 2016 or newer instance, and Windows account permissions for backup/restore operations.
+- Microsoft ODBC SQLCMD, supplied by the sqlserver-cmdlineutils dependency. SQL Server itself is not installed by this package.
+
+This package downloads the unsigned portable executable from the project's GitHub release, verifies its SHA-256 checksum, creates a Start menu shortcut, and exposes the nebula-dba-tools command. Node.js is not required.
+
+The SQL Server service account and your Windows account must both have access to your chosen backup folder. Restoring replaces the target database and disconnects active sessions. Uninstall removes the application and shortcut; user settings, saved scripts and database backups are retained.
+    ]]></description>
+    <releaseNotes>https://github.com/Porkstone/nebula-dba-tools/releases/tag/v0.1.0</releaseNotes>
+    <tags>nebula dba sql-server sqlserver database backup restore electron portable foss</tags>
+    <dependencies>
+      <dependency id="sqlserver-cmdlineutils" version="15.0.4298.100" />
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
