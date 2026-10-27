@@ -10,7 +10,7 @@ $packageArgs = @{
   packageName    = 'nebula-dba-tools'
   fileFullPath   = $executable
   url64bit       = 'https://github.com/Porkstone/nebula-dba-tools/releases/download/v0.1.0/nebula-dba-tools-0.1.0.exe'
-  checksum64     = 'fff75514e67be4249aaa76293ebb152b90ada2bbd0406d083b09f54a38b02318'
+  checksum64     = '3dc5d2f4dc9183193d2ee856fc9d843afac99dfbcfc0951469c320e9ea7a04f8'
   checksumType64 = 'sha256'
 }
 
