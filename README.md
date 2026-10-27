@@ -36,7 +36,7 @@ Create an unsigned portable Windows executable:
 
 ```powershell
 pnpm package
-# release/Nebula-DBA-0.1.0.exe
+# release/nebula-dba-tools-0.1.0.exe
 ```
 
 The portable app still needs ODBC SQLCMD installed. `pnpm dev:web` opens only the browser interface; database operations require Electron. The launcher clears an inherited `ELECTRON_RUN_AS_NODE` variable when launched from coding tools.
