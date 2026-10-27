@@ -51,7 +51,7 @@
     <p>Distribution / 27 October 2026</p>
     <h1>Submit Nebula DBA to Chocolatey</h1>
     <p class="intro">
-      Publish the existing 0.1.0 Windows portable application as
+      Publish the 0.1.0 Windows portable application as
       <code>nebula-dba-tools</code>, with reproducible package sources and
       checksum-verified downloads.
     </p>
@@ -61,7 +61,9 @@
         <li>Run lint, unit tests and the production Windows package build.</li>
         <li>
           Publish the executable and SHA-256 checksum to GitHub release
-          <code>v0.1.0</code>, tied to the existing application commit.
+          <code>v0.1.0</code>, with <code>nebula-dba-tools.exe</code> as the
+          application executable and <code>nebula-dba-tools-0.1.0.exe</code> as
+          the portable download.
         </li>
         <li>
           Create Chocolatey metadata and scripts that download the x64
@@ -83,6 +85,11 @@
           Publish package sources to the existing repository, then submit the
           nupkg to Chocolatey's community push endpoint using the privately
           supplied key.
+        </li>
+        <li>
+          Update the existing 0.1.0 submission while it is in moderation, with
+          the corrected executable filename and checksum. Preserve the version
+          in the portable download filename.
         </li>
         <li>
           Report the submission response and package page. Chocolatey's

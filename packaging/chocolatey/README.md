@@ -2,6 +2,8 @@
 
 Package ID: `nebula-dba-tools`. The package downloads the x64 portable executable from a versioned GitHub release and checks its SHA-256 hash. It installs Microsoft ODBC SQLCMD through `sqlserver-cmdlineutils`; it does not install SQL Server.
 
+The Windows executable and Chocolatey command are `nebula-dba-tools.exe` / `nebula-dba-tools`. The portable download keeps its version: `nebula-dba-tools-0.1.0.exe`.
+
 ## Build and validate
 
 From the repository root, after the GitHub release asset is available:

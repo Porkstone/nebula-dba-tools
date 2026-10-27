@@ -4,13 +4,13 @@ The portable executable is downloaded from the official project GitHub release:
 https://github.com/Porkstone/nebula-dba-tools/releases/tag/v0.1.0
 
 Download URL:
-https://github.com/Porkstone/nebula-dba-tools/releases/download/v0.1.0/Nebula-DBA-0.1.0.exe
+https://github.com/Porkstone/nebula-dba-tools/releases/download/v0.1.0/nebula-dba-tools-0.1.0.exe
 
 SHA-256:
-dcbea855038c9377a15474a7d50b6069dcadeeabd9b474b90d8e883119d77dcd
+fff75514e67be4249aaa76293ebb152b90ada2bbd0406d083b09f54a38b02318
 
-Verify with: Get-FileHash -Algorithm SHA256 .\Nebula-DBA-0.1.0.exe
+Verify with: Get-FileHash -Algorithm SHA256 .\nebula-dba-tools-0.1.0.exe
 
-Source commit: a539ed3241fa1dec1d0aebc34c3e6739054c3250
+Source commit: a2ae73ce2c41d33fea0112f0d5029dd0a323fa31
 Build: pnpm install --frozen-lockfile; pnpm lint; pnpm test; pnpm package
 The executable is unsigned. No binary is embedded in this Chocolatey package.
