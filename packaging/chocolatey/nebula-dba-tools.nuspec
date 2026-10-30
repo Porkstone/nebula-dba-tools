@@ -8,7 +8,8 @@
     <owners>Porkstone</owners>
     <projectUrl>https://github.com/Porkstone/nebula-dba-tools</projectUrl>
     <packageSourceUrl>https://github.com/Porkstone/nebula-dba-tools/tree/master/packaging/chocolatey</packageSourceUrl>
-    <projectSourceUrl>https://github.com/Porkstone/nebula-dba-tools</projectSourceUrl>
+    <projectSourceUrl>https://github.com/Porkstone/nebula-dba-tools/tree/8f1cfd85904a5761ef686ad61115888c877bab60</projectSourceUrl>
+    <iconUrl>https://cdn.jsdelivr.net/gh/Porkstone/nebula-dba-tools@master/packaging/chocolatey/nebula-dba-tools.png</iconUrl>
     <docsUrl>https://github.com/Porkstone/nebula-dba-tools#readme</docsUrl>
     <bugTrackerUrl>https://github.com/Porkstone/nebula-dba-tools/issues</bugTrackerUrl>
     <licenseUrl>https://github.com/Porkstone/nebula-dba-tools/blob/v0.1.0/LICENSE</licenseUrl>

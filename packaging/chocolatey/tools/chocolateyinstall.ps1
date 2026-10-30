@@ -9,8 +9,8 @@ $executable = Join-Path $toolsDir 'nebula-dba-tools.exe'
 $packageArgs = @{
   packageName    = 'nebula-dba-tools'
   fileFullPath   = $executable
-  url64bit       = 'https://github.com/Porkstone/nebula-dba-tools/releases/download/v0.1.0/Nebula-DBA-0.1.0.exe'
-  checksum64     = 'dcbea855038c9377a15474a7d50b6069dcadeeabd9b474b90d8e883119d77dcd'
+  url64bit       = 'https://github.com/Porkstone/nebula-dba-tools/releases/download/v0.1.0/nebula-dba-tools-0.1.0.exe'
+  checksum64     = '3dc5d2f4dc9183193d2ee856fc9d843afac99dfbcfc0951469c320e9ea7a04f8'
   checksumType64 = 'sha256'
 }
 

@@ -34,11 +34,12 @@
       "package.json"
     ],
     "win": {
+      "executableName": "nebula-dba-tools",
       "target": "portable",
       "signAndEditExecutable": false
     },
     "portable": {
-      "artifactName": "Nebula-DBA-${version}.exe"
+      "artifactName": "nebula-dba-tools-${version}.exe"
     }
   },
   "devDependencies": {
