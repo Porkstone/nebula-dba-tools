@@ -4,6 +4,8 @@ Package ID: `nebula-dba-tools`. The package downloads the x64 portable executabl
 
 The Windows executable and Chocolatey command are `nebula-dba-tools.exe` / `nebula-dba-tools`. The portable download keeps its version: `nebula-dba-tools-0.1.0.exe`.
 
+The nupkg contains the install and uninstall scripts; the executable is downloaded at install time. Keep its checksum in `chocolateyinstall.ps1` and the license URL in the nuspec. Do not add `tools/LICENSE.txt` or `tools/VERIFICATION.txt`; these files are not needed for this download-only package.
+
 ## Build and validate
 
 From the repository root, after the GitHub release asset is available:
@@ -27,7 +29,7 @@ Push the validated nupkg to `https://push.chocolatey.org/` with `choco push`. Su
 
 1. Build and test the application, then publish its versioned portable executable on GitHub.
 2. Update the nuspec version, versioned metadata links and install script download URL.
-3. Calculate the executable's SHA-256 with `Get-FileHash -Algorithm SHA256`, and update `checksum64` and `tools/VERIFICATION.txt`.
+3. Calculate the executable's SHA-256 with `Get-FileHash -Algorithm SHA256`, and update `checksum64` in `tools/chocolateyinstall.ps1`.
 4. Pack, inspect, test install/upgrade/uninstall in a disposable VM, and submit the nupkg.
 
 Chocolatey automatically manages the GUI command shim. The uninstall script removes the Start menu shortcut. Settings, saved SQL scripts and database backups remain in their existing locations.
