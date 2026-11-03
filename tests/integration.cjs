@@ -31,6 +31,21 @@ async function main() {
     const file = await sql.backup(names[0], root);
     assert.ok((await fs.stat(file)).size > 0);
     assert.equal(path.basename(path.dirname(file)), names[0]);
+    const compressionSupported = (await sql.requireDatabase(names[0]))
+      .compressionSupported;
+    const uncompressed = await sql.backup(names[0], root, false);
+    if (compressionSupported) {
+      assert.ok(
+        (await fs.stat(file)).size < (await fs.stat(uncompressed)).size,
+        "The default compressed backup should be smaller for this test database.",
+      );
+    }
+    const policy =
+      await sql.json(`SELECT bs.is_copy_only AS copyOnly, bs.has_backup_checksums AS checksums
+      FROM msdb.dbo.backupset bs JOIN msdb.dbo.backupmediafamily mf ON mf.media_set_id=bs.media_set_id
+      WHERE mf.physical_device_name IN (${literal(file)},${literal(uncompressed)}) FOR JSON PATH;`);
+    assert.equal(policy.length, 2);
+    assert.ok(policy.every((backup) => backup.copyOnly && backup.checksums));
     await sql.query(
       `USE ${identifier(names[0])}; UPDATE dbo.Probe SET value=N'after backup';`,
     );
@@ -59,7 +74,7 @@ async function main() {
       state.every((d) => d.state === "ONLINE" && d.access === "MULTI_USER"),
     );
     console.log(
-      "PASS: discovery, Unicode/quoted names, backup folder, checksum verification, in-place restore, cross-database MOVE, restored content and multi-user state.",
+      "PASS: bundled SQLCMD, discovery, Unicode/quoted names, compressed/default and uncompressed backups, copy-only/checksums, in-place restore, cross-database MOVE, restored content and multi-user state.",
     );
   } finally {
     for (const name of created) {

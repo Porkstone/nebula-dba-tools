@@ -1,5 +1,5 @@
 param(
-  [string]$PackagePath = "$PSScriptRoot/../release/chocolatey/nebula-dba-tools.0.1.0.nupkg"
+  [string]$PackagePath = "$PSScriptRoot/../release/chocolatey/nebula-dba-tools.0.2.0-beta.1.nupkg"
 )
 
 $ErrorActionPreference = 'Stop'
@@ -24,6 +24,9 @@ if ($appPackage.build.portable.artifactName -cne ($packageId + '-${version}.exe'
 }
 if ([string]$metadata.version -ne $appPackage.version) {
   throw 'The Chocolatey and application versions do not match.'
+}
+if (@($metadata.dependencies.dependency | Where-Object { $_ }).Count -gt 0) {
+  throw 'This self-contained package must not install external runtime prerequisites.'
 }
 $toolsDir = Join-Path $sandbox 'tools'
 $shortcutDir = Join-Path $sandbox 'shortcuts'

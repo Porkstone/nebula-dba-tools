@@ -6,19 +6,19 @@ A Windows Electron app for backing up and restoring local SQL Server databases. 
 
 ## Windows download
 
-Download the unsigned x64 portable executable from [GitHub Releases](https://github.com/Porkstone/nebula-dba-tools/releases). Windows 10 or newer is required. Install Microsoft ODBC SQLCMD separately when using the portable download; Node.js and pnpm are not required to run it.
+Download the unsigned x64 portable executable from [GitHub Releases](https://github.com/Porkstone/nebula-dba-tools/releases). Windows 10 or newer is required. The 0.2.0-beta.1 test release includes Microsoft's standalone Go SQLCMD client, so it needs no separate SQLCMD, ODBC driver or Visual C++ redistributable installation. Node.js and pnpm are not required to run it. The older 0.1.0 portable release still requires ODBC SQLCMD.
 
-The Chocolatey package ID is `nebula-dba-tools`. After the package is approved in the community repository, install it from an elevated PowerShell session:
+The published stable Chocolatey package is `nebula-dba-tools` version 0.1.0. Install it from an elevated PowerShell session:
 
 ```powershell
 choco install nebula-dba-tools --yes
 ```
 
-The package installs ODBC SQLCMD as a dependency and adds a Start menu shortcut and the `nebula-dba-tools` command. You still need an existing local SQL Server instance and the permissions described below. Uninstalling retains settings, saved SQL scripts and database backups. See the [Chocolatey package sources and maintenance instructions](packaging/chocolatey/README.md).
+The stable 0.1.0 package installs ODBC SQLCMD and its prerequisites. The 0.2.0-beta.1 package sources remove that dependency chain and use the bundled client. Both add a Start menu shortcut and the `nebula-dba-tools` command. You still need an existing local SQL Server instance and the permissions described below. Uninstalling retains settings, saved SQL scripts and database backups. See the [Chocolatey package sources and maintenance instructions](packaging/chocolatey/README.md).
 
 ## Run
 
-Requires Windows, Node.js 22.12+ (Node 24 recommended), pnpm, SQL Server 2016 or newer, and **Microsoft ODBC SQLCMD** on PATH. Your Windows account needs the relevant SQL Server backup/restore permissions. The app does not use a separate login or cloud service.
+Requires Windows, Node.js 22.12+ (Node 24 recommended), pnpm, and SQL Server 2016 or newer. Your Windows account needs the relevant SQL Server backup/restore permissions. The app does not use a separate login or cloud service. Development and build commands prepare the pinned SQLCMD client automatically; the first run needs internet access to download its verified archive.
 
 ```powershell
 pnpm install
@@ -36,17 +36,17 @@ Create an unsigned portable Windows executable:
 
 ```powershell
 pnpm package
-# release/nebula-dba-tools-0.1.0.exe
+# release/nebula-dba-tools-0.2.0-beta.1.exe
 ```
 
-The portable app still needs ODBC SQLCMD installed. `pnpm dev:web` opens only the browser interface; database operations require Electron. The launcher clears an inherited `ELECTRON_RUN_AS_NODE` variable when launched from coding tools.
+`pnpm dev:web` opens only the browser interface; database operations require Electron. The launcher clears an inherited `ELECTRON_RUN_AS_NODE` variable when launched from coding tools. The bundled client is pinned in `third-party/sqlcmd/manifest.json`; its license and upstream third-party notices are shipped alongside it under the application's `resources/sqlcmd` folder.
 
 ## Using the app
 
 1. On launch, Nebula attempts the last-used local instance, then local SQL Server services. Click the instance control to connect manually to `localhost` or `localhost\SQLEXPRESS`. Authentication uses the current Windows account.
 2. Select a database from the searchable sidebar. System databases are grouped separately.
 3. Choose a backup folder. Nebula remembers it and creates a child folder matching the database name, then writes a uniquely named timestamped `.bak` file there.
-4. **Create backup** performs a full, copy-only backup with checksums, then runs `RESTORE VERIFYONLY`. Copy-only preserves existing differential backup chains. Verification checks readability and checksums; it is not a substitute for periodic test restores and `DBCC CHECKDB`.
+4. **Create backup** performs a full, copy-only backup with checksums, then runs `RESTORE VERIFYONLY`. **Compress backup** appears for supported online databases and defaults to on when selecting a database. Switch it off to explicitly create an uncompressed backup, even if the server normally compresses backups. Enterprise, Standard, Developer and Evaluation editions support compression; Web and Express do not. Compression reduces storage at the cost of extra CPU use. Copy-only preserves existing differential backup chains. Verification checks readability and checksums; it is not a substitute for periodic test restores and `DBCC CHECKDB`.
 5. To restore, choose a file from **Local backups** or browse to a `.bak` file. Review the target and source, type the exact target database name, then confirm the native warning. Restore disconnects active sessions and replaces the selected database. Back up current data first if you need to retain it.
 
 The SQL Server **service account**, as well as the current Windows user, needs access to the backup folder. The app does not change filesystem permissions. Protected folders such as Program Files may reject folder creation. Choose a shared local folder accessible to both accounts.
@@ -84,6 +84,8 @@ pnpm test:desktop
 The last two commands require a local SQL Server and permission to create/drop databases. They create uniquely named `Nebula_Test_*` / `Nebula_UI_Test_*` databases, back up and restore **only those databases**, and remove them afterward. Backups use `test-results` by default; for the SQL integration test, set `NEBULA_TEST_BACKUP_ROOT` if another folder is required. Never point tests at production infrastructure. A forcibly interrupted test may need its uniquely named test database cleaned up manually.
 
 The desktop test launches real Electron with an isolated profile, exercises the actual IPC and SQL operations, substitutes native dialogs in the test process, checks restore cancellation/confirmation, and captures screenshots of both themes. Screenshots are in the ignored `test-results` folder.
+
+After `pnpm package`, run `node tests/packaged.cjs` to validate the production app with external SQLCMD excluded from PATH. It checks the bundled client and legal notices, Windows authentication, database discovery and compression capability reporting using an isolated profile. It does not modify databases.
 
 ## Structure
 

@@ -32,6 +32,18 @@ async function main() {
     });
     await page.getByRole("button", { name: "Dark", exact: true }).click();
     await page.getByRole("button", { name, exact: true }).click();
+    const compressionSwitch = page.getByRole("switch", {
+      name: "Compress backup",
+    });
+    if ((await sql.requireDatabase(name)).compressionSupported) {
+      await expect(compressionSwitch).toBeChecked();
+      await compressionSwitch.click();
+      await expect(compressionSwitch).not.toBeChecked();
+      await compressionSwitch.click();
+      await expect(compressionSwitch).toBeChecked();
+    } else {
+      await expect(compressionSwitch).toHaveCount(0);
+    }
     await expect(
       page.getByRole("button", { name: "Create backup", exact: true }),
     ).toBeDisabled();
@@ -52,11 +64,33 @@ async function main() {
       page.getByText("Operation complete", { exact: true }),
     ).toBeVisible({ timeout: 60000 });
     await expect(page.locator("tbody tr")).toHaveCount(1);
+    if ((await sql.requireDatabase(name)).compressionSupported) {
+      const compressed = (
+        await page.evaluate((name) => window.nebula.backups(name), name)
+      ).data[0];
+      await compressionSwitch.click();
+      await expect(compressionSwitch).not.toBeChecked();
+      await page
+        .getByRole("button", { name: "Create backup", exact: true })
+        .click();
+      await expect(page.locator("tbody tr")).toHaveCount(2);
+      const uncompressed = (
+        await page.evaluate((name) => window.nebula.backups(name), name)
+      ).data[0];
+      expect((await fs.stat(uncompressed.path)).size).toBeGreaterThan(
+        (await fs.stat(compressed.path)).size,
+      );
+      await expect(compressionSwitch).not.toBeChecked();
+      await compressionSwitch.click();
+    }
     await page.getByRole("button", { name: "Dismiss notification" }).click();
     await page.screenshot({ path: path.join(output, "desktop-dark.png") });
     await page.getByRole("button", { name: "Light", exact: true }).click();
     await page.screenshot({ path: path.join(output, "desktop-light.png") });
-    await page.getByRole("button", { name: "Restore", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Restore", exact: true })
+      .first()
+      .click();
     await page.getByRole("button", { name: "Review restore" }).click();
     await expect(
       page
@@ -127,7 +161,7 @@ async function main() {
     );
     expect(errors).toEqual([]);
     console.log(
-      "PASS: Electron launch, real IPC connection, folder selection, backup, restore cancellation, confirmation, restored data, both themes, small window, connection error and no renderer exceptions.",
+      "PASS: Electron launch, real IPC connection, compression default/toggle, folder selection, backup, restore cancellation, confirmation, restored data, both themes, small window, connection error and no renderer exceptions.",
     );
   } finally {
     await desktop?.close();

@@ -1,8 +1,8 @@
 # Chocolatey package
 
-Package ID: `nebula-dba-tools`. The package downloads the x64 portable executable from a versioned GitHub release and checks its SHA-256 hash. It installs Microsoft ODBC SQLCMD through `sqlserver-cmdlineutils`; it does not install SQL Server.
+Package ID: `nebula-dba-tools`. The package downloads the x64 portable executable from a versioned GitHub release and checks its SHA-256 hash. Version 0.2.0-beta.1 includes the standalone Microsoft Go SQLCMD client and has no Chocolatey runtime dependencies. It does not install SQL Server.
 
-The Windows executable and Chocolatey command are `nebula-dba-tools.exe` / `nebula-dba-tools`. The portable download keeps its version: `nebula-dba-tools-0.1.0.exe`.
+The Windows executable and Chocolatey command are `nebula-dba-tools.exe` / `nebula-dba-tools`. The portable download keeps its version: `nebula-dba-tools-0.2.0-beta.1.exe`.
 
 The nupkg contains the install and uninstall scripts; the executable is downloaded at install time. Keep its checksum in `chocolateyinstall.ps1` and the license URL in the nuspec. Do not add `tools/LICENSE.txt` or `tools/VERIFICATION.txt`; these files are not needed for this download-only package.
 
@@ -13,11 +13,11 @@ From the repository root, after the GitHub release asset is available:
 ```powershell
 New-Item -ItemType Directory -Force release/chocolatey | Out-Null
 choco pack packaging/chocolatey/nebula-dba-tools.nuspec --output-directory release/chocolatey
-choco install nebula-dba-tools --version 0.1.0 --source "release/chocolatey;https://community.chocolatey.org/api/v2/" --yes
+choco install nebula-dba-tools --version 0.2.0-beta.1 --pre --source "release/chocolatey;https://community.chocolatey.org/api/v2/" --yes
 choco uninstall nebula-dba-tools --yes
 ```
 
-Use a disposable Windows VM for full dependency and lifecycle testing. On a machine that already has ODBC SQLCMD installed outside Chocolatey, `--ignore-dependencies` can validate this package without reinstalling those prerequisites. The application must be closed before uninstall or upgrade.
+Use a disposable Windows VM for full lifecycle testing. A separate ODBC SQLCMD or Visual C++ redistributable installation is not needed. The application must be closed before uninstall or upgrade.
 
 For script validation without administrator access, run `powershell -NoProfile -File scripts/test-chocolatey.ps1`. This extracts the nupkg into `test-results`, runs the real Chocolatey download and checksum helpers, checks x86 rejection, generates a GUI shim and verifies shortcut creation/removal. Start menu paths are redirected into the sandbox; it does not install the dependencies or exercise Chocolatey's elevated package lifecycle.
 

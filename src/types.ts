@@ -5,6 +5,7 @@ export interface Database {
   recovery: string;
   sizeMB: number;
   system: boolean;
+  compressionSupported: boolean;
 }
 export interface Backup {
   name: string;
@@ -42,7 +43,7 @@ export interface NebulaApi {
   postRestoreScript(name: string): Promise<Result<string>>;
   savePostRestoreScript(name: string, script: string): Promise<Result<string>>;
   backups(name: string): Promise<Result<Backup[]>>;
-  backup(name: string): Promise<Result<string>>;
+  backup(name: string, compression: boolean): Promise<Result<string>>;
   restorePlan(name: string, file: string): Promise<Result<RestorePlan>>;
   restore(
     name: string,

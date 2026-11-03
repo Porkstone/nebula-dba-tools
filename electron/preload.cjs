@@ -9,7 +9,8 @@ contextBridge.exposeInMainWorld("nebula", {
   chooseFolder: () => ipcRenderer.invoke("choose-folder"),
   chooseBackup: () => ipcRenderer.invoke("choose-backup"),
   backups: (name) => ipcRenderer.invoke("backups", name),
-  backup: (name) => ipcRenderer.invoke("backup", name),
+  backup: (name, compression) =>
+    ipcRenderer.invoke("backup", name, compression),
   restorePlan: (name, file) => ipcRenderer.invoke("restore-plan", name, file),
   restore: (name, file, confirmation) =>
     ipcRenderer.invoke("restore", name, file, confirmation),
