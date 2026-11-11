@@ -58,6 +58,7 @@ export default function App() {
   const [search, setSearch] = useState("");
   const [showSystem, setShowSystem] = useState(false);
   const [tab, setTab] = useState<"backup" | "restore">("backup");
+  const [compression, setCompression] = useState(true);
   const [backups, setBackups] = useState<Backup[]>([]);
   const [loadingFiles, setLoadingFiles] = useState(false);
   const [fileError, setFileError] = useState("");
@@ -201,6 +202,7 @@ export default function App() {
     setConnected(false);
     setDatabases([]);
     setSelected("");
+    setCompression(true);
     setBackups([]);
     setFile("");
     setRestorePlan(null);
@@ -249,7 +251,9 @@ export default function App() {
     setProgress("Preparing the backup…");
     setNotice(null);
     try {
-      const destination = await unwrap(api.backup(db.name));
+      const destination = await unwrap(
+        api.backup(db.name, db.compressionSupported && compression),
+      );
       setNotice({
         type: "success",
         text: `Backup created and verified: ${destination}`,
@@ -335,6 +339,7 @@ export default function App() {
       title={item.name}
       onClick={() => {
         setSelected(item.name);
+        setCompression(true);
         setFile("");
         setRestorePlan(null);
         setNotice(null);
@@ -665,6 +670,31 @@ export default function App() {
                       <ChevronRight size={12} />
                       <span>Timestamped .bak files</span>
                     </div>
+                    {db.compressionSupported && (
+                      <div className="compression-option">
+                        <div>
+                          <strong id="compression-label">
+                            Compress backup
+                          </strong>
+                          <p id="compression-help">
+                            Smaller backup files, with extra CPU use during
+                            backup.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={compression}
+                          aria-labelledby="compression-label"
+                          aria-describedby="compression-help"
+                          className="compression-switch"
+                          disabled={locked}
+                          onClick={() => setCompression(!compression)}
+                        >
+                          <span aria-hidden="true" />
+                        </button>
+                      </div>
+                    )}
                     <div className="backup-details">
                       <div>
                         <ShieldCheck size={18} />

@@ -194,11 +194,11 @@ app.whenReady().then(async () => {
     return selectedBackup || null;
   });
   handle("backups", listBackups);
-  handle("backup", (name) =>
+  handle("backup", (name, compression) =>
     exclusive(async () => {
       if (!settings.backupRoot)
         throw new Error("Choose a backup folder first.");
-      return requireSql().backup(name, settings.backupRoot);
+      return requireSql().backup(name, settings.backupRoot, compression);
     }),
   );
   handle("restore-plan", (name, file) =>

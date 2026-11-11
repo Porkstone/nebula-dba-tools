@@ -3,6 +3,23 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const os = require("node:os");
 const { randomUUID } = require("node:crypto");
+const { existsSync } = require("node:fs");
+
+function supportsBackupCompression(engineEdition, edition) {
+  return (
+    engineEdition === 3 ||
+    (engineEdition === 2 && /\bStandard\b/i.test(edition || ""))
+  );
+}
+
+function sqlcmdPath() {
+  const packaged =
+    process.resourcesPath &&
+    path.join(process.resourcesPath, "sqlcmd", "sqlcmd.exe");
+  return packaged && existsSync(packaged)
+    ? packaged
+    : path.join(__dirname, "..", "vendor", "sqlcmd", "sqlcmd.exe");
+}
 
 function validateScript(script) {
   if (
@@ -96,7 +113,7 @@ function execute(
       reject(
         new Error(
           err.code === "ENOENT"
-            ? "SQLCMD was not found. Install Microsoft SQL Server command-line utilities and add sqlcmd to PATH."
+            ? "The bundled SQL Server client is missing. Reinstall Nebula DBA."
             : err.message,
         ),
       );
@@ -121,11 +138,11 @@ class SqlServer {
     this.onProgress = onProgress;
   }
   async query(sql, longRunning = false, options = {}) {
-    // ODBC sqlcmd applies -u reliably to file output, not redirected stdout.
+    // SQLCMD's -u output file preserves Unicode without console-code-page loss.
     const outputFile = path.join(os.tmpdir(), `nebula-sql-${randomUUID()}.txt`);
     try {
       await execute(
-        "sqlcmd",
+        sqlcmdPath(),
         [
           "-S",
           this.server,
@@ -198,11 +215,20 @@ class SqlServer {
     }
   }
   async databases() {
-    return this
+    const databases = await this
       .json(`SELECT d.name, d.database_id AS id, d.state_desc AS state, d.recovery_model_desc AS recovery,
       CAST(COALESCE((SELECT SUM(CAST(size AS bigint))*8.0/1024 FROM sys.master_files f WHERE f.database_id=d.database_id),0) AS decimal(18,1)) AS sizeMB,
-      CAST(CASE WHEN d.database_id <= 4 THEN 1 ELSE 0 END AS bit) AS system
+      CAST(CASE WHEN d.database_id <= 4 THEN 1 ELSE 0 END AS bit) AS system,
+      CAST(SERVERPROPERTY('EngineEdition') AS int) AS engineEdition,
+      CAST(SERVERPROPERTY('Edition') AS nvarchar(128)) AS edition
       FROM sys.databases d ORDER BY d.name FOR JSON PATH;`);
+    return databases.map(({ engineEdition, edition, ...database }) => ({
+      ...database,
+      compressionSupported:
+        database.state === "ONLINE" &&
+        database.name !== "tempdb" &&
+        supportsBackupCompression(engineEdition, edition),
+    }));
   }
   async requireDatabase(name, restore = false) {
     const db = (await this.databases()).find((db) => db.name === name);
@@ -218,15 +244,27 @@ class SqlServer {
       );
     return db;
   }
-  async backup(name, root) {
-    await this.requireDatabase(name);
+  async backup(name, root, compression) {
+    const database = await this.requireDatabase(name);
+    if (compression === undefined)
+      compression = database.compressionSupported === true;
+    if (typeof compression !== "boolean")
+      throw new Error("The compression option must be on or off.");
+    if (compression && !database.compressionSupported)
+      throw new Error(
+        "Backup compression is not supported by this SQL Server edition.",
+      );
     const folder = databaseFolder(root, name);
     await fs.mkdir(folder, { recursive: true });
     const filename = `${name}_${new Date().toISOString().replace(/[:.]/g, "-")}_${randomUUID().slice(0, 8)}.bak`;
     const destination = path.win32.join(folder, filename);
-    this.onProgress("Creating a full copy-only backup…");
+    this.onProgress(
+      compression
+        ? "Creating a compressed copy-only backup…"
+        : "Creating a full copy-only backup…",
+    );
     await this.query(
-      `BACKUP DATABASE ${identifier(name)} TO DISK = ${literal(destination)} WITH COPY_ONLY, CHECKSUM, NOINIT, STATS = 10;`,
+      `BACKUP DATABASE ${identifier(name)} TO DISK = ${literal(destination)} WITH COPY_ONLY, CHECKSUM, NOINIT, ${compression ? "COMPRESSION, MAXTRANSFERSIZE = 1048576" : "NO_COMPRESSION"}, STATS = 10;`,
       true,
     );
     this.onProgress("Verifying backup checksums…");
@@ -365,6 +403,8 @@ async function discoverInstances() {
   }
 }
 module.exports = {
+  supportsBackupCompression,
+  sqlcmdPath,
   validateScript,
   SqlServer,
   databaseFolder,

@@ -646,6 +646,55 @@ h1 {
   color: var(--control);
   line-height: 1;
 }
+.compression-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 16px;
+  margin-bottom: 20px;
+  background: var(--editor);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+}
+.compression-option strong {
+  font-size: 12px;
+  font-weight: 600;
+}
+.compression-option p {
+  color: var(--muted);
+  font-size: 11px;
+  margin: 5px 0 0;
+}
+.compression-switch {
+  width: 42px;
+  height: 24px;
+  padding: 3px;
+  border: 1px solid var(--control);
+  border-radius: 20px;
+  background: var(--button);
+  flex-shrink: 0;
+}
+.compression-switch span {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: transform 0.15s;
+}
+.compression-switch[aria-checked="true"] {
+  background: var(--cyan);
+  border-color: var(--cyan);
+}
+.compression-switch[aria-checked="true"] span {
+  transform: translateX(17px);
+  background: var(--surface);
+}
+.compression-switch:focus-visible {
+  outline: 2px solid var(--orange);
+  outline-offset: 3px;
+}
 .backup-details {
   display: grid;
   grid-template-columns: 1fr 1fr;
